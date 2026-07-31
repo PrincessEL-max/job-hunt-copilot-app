@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import ApplicationForm from "./ApplicationForm";
-import ApplicationList from "./ApplicationList";
+import KanbanBoard from "./KanbanBoard";
 import { STATUS_OPTIONS, STATUS_STYLES, FOCUS_RING } from "../lib/constants";
 import { uid } from "../lib/utils";
 
@@ -81,12 +81,18 @@ export default function Tracker({ applications, persistApplications, loading }) 
         />
       )}
 
-      <ApplicationList
-        applications={applications}
-        loading={loading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      {loading ? (
+        <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+        </div>
+      ) : (
+        <KanbanBoard
+          applications={applications}
+          persistApplications={persistApplications}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Briefcase } from "lucide-react";
 import Tracker from "./Tracker";
 import Analyzer from "./Analyzer";
+import Dashboard from "./Dashboard";
 import { FOCUS_RING } from "../lib/constants";
 import { loadLocal, saveLocal, APPLICATIONS_KEY } from "../lib/storage";
 
@@ -59,6 +60,16 @@ export default function JobHuntCopilot() {
           >
             Analisis &amp; Cover Letter
           </button>
+          <button
+            onClick={() => setTab("dashboard")}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
+              tab === "dashboard"
+                ? "border-teal-700 text-teal-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Dashboard
+          </button>
         </div>
 
         {tab === "tracker" && (
@@ -75,6 +86,7 @@ export default function JobHuntCopilot() {
             onViewTracker={() => setTab("tracker")}
           />
         )}
+        {tab === "dashboard" && <Dashboard applications={applications} />}
       </div>
     </div>
   );

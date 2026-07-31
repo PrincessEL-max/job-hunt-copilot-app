@@ -40,7 +40,7 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cvText, jobDescription }),
+        body: JSON.stringify({ cvText, jobDescription, company, role }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analisis gagal.");
@@ -148,7 +148,16 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
 
       {analysisError && <p className="text-sm text-rose-600">{analysisError}</p>}
 
-      {result && (
+      {result && result.input_valid === false && (
+        <div className="mt-6 p-5 border border-amber-200 bg-amber-50 rounded-lg">
+          <p className="text-sm text-amber-800">
+            {result.cover_letter ||
+              "CV atau deskripsi pekerjaan yang kamu masukkan sepertinya belum lengkap. Coba tempel isi CV dan deskripsi lowongan yang lebih detail, ya."}
+          </p>
+        </div>
+      )}
+
+      {result && result.input_valid !== false && (
         <div className="mt-6 p-5 border border-slate-200 rounded-lg bg-white space-y-5">
           <div>
             <div className="flex items-baseline gap-2">
