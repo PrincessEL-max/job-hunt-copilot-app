@@ -5,6 +5,7 @@ import { Briefcase } from "lucide-react";
 import Tracker from "./Tracker";
 import Analyzer from "./Analyzer";
 import Dashboard from "./Dashboard";
+import InterviewPrep from "./InterviewPrep";
 import { FOCUS_RING } from "../lib/constants";
 import { loadLocal, saveLocal, APPLICATIONS_KEY } from "../lib/storage";
 
@@ -39,10 +40,10 @@ export default function JobHuntCopilot() {
           </p>
         </header>
 
-        <div className="flex gap-1 mb-6 border-b border-slate-200">
+        <div className="flex gap-1 mb-6 border-b border-slate-200 overflow-x-auto">
           <button
             onClick={() => setTab("tracker")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
+            className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
               tab === "tracker"
                 ? "border-teal-700 text-teal-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
@@ -52,7 +53,7 @@ export default function JobHuntCopilot() {
           </button>
           <button
             onClick={() => setTab("analyze")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
+            className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
               tab === "analyze"
                 ? "border-teal-700 text-teal-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
@@ -61,8 +62,18 @@ export default function JobHuntCopilot() {
             Analisis &amp; Cover Letter
           </button>
           <button
+            onClick={() => setTab("interview")}
+            className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
+              tab === "interview"
+                ? "border-teal-700 text-teal-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Persiapan Interview
+          </button>
+          <button
             onClick={() => setTab("dashboard")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
+            className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-sm ${FOCUS_RING} ${
               tab === "dashboard"
                 ? "border-teal-700 text-teal-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
@@ -86,6 +97,7 @@ export default function JobHuntCopilot() {
             onViewTracker={() => setTab("tracker")}
           />
         )}
+        {tab === "interview" && <InterviewPrep />}
         {tab === "dashboard" && <Dashboard applications={applications} />}
       </div>
     </div>

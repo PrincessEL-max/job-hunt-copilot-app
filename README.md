@@ -1,6 +1,6 @@
 # Job Hunt Copilot
 
-![CI](https://github.com/PrincessEL-max/job-hunt-copilot/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/USERNAME/job-hunt-copilot/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 
 > Ganti `USERNAME` di badge CI di atas dengan username GitHub kamu setelah push.
@@ -8,12 +8,19 @@
 Aplikasi pelacak lamaran kerja dengan asisten AI yang menganalisis kecocokan CV terhadap deskripsi pekerjaan dan membuat draft cover letter otomatis.
 
 ![Tracker screenshot](./docs/screenshot-tracker.png)
+![Dashboard screenshot](./docs/screenshot-dashboard.png)
+![Interview prep screenshot](./docs/screenshot-interview-prep.png)
+![PDF upload screenshot](./docs/screenshot-pdf-upload.png)
 ![Analyzer screenshot](./docs/screenshot-analyze.png)
 
 ## Fitur
 
+- Papan Kanban drag & drop — geser kartu lamaran antar kolom status (Melamar, Interview, Offer, Ditolak)
+- Dashboard analitik — tren lamaran per minggu, distribusi per tahap, rata-rata skor kecocokan
+- Generator persiapan interview — AI membuat pertanyaan latihan (umum, teknis, berdasarkan celah di CV) beserta tips menjawab
+- Upload CV dari file PDF — teks diekstrak otomatis, gak perlu copy-paste manual
 - Lacak lamaran kerja (perusahaan, posisi, status, tanggal, catatan)
-- Analisis kecocokan CV vs deskripsi pekerjaan (skor 0–100, kekuatan, kekurangan)
+- Analisis kecocokan CV vs deskripsi pekerjaan (skor 0–100, kekuatan, kekurangan) — AI juga diberi tahu perusahaan/posisi yang dituju biar cover letter-nya personal
 - Draft cover letter otomatis berbasis AI
 - Data tersimpan di browser (`localStorage`) — tidak perlu database untuk mulai
 
@@ -22,6 +29,9 @@ Aplikasi pelacak lamaran kerja dengan asisten AI yang menganalisis kecocokan CV 
 - Next.js 16 (App Router, Route Handlers, Turbopack)
 - React 19
 - Tailwind CSS v4
+- @dnd-kit — drag & drop untuk papan Kanban
+- Recharts — grafik dashboard
+- pdfjs-dist — ekstraksi teks dari upload CV PDF
 - Gemini API (Google) untuk analisis & generasi teks — gratis, tanpa kartu kredit
 - ESLint 9 (flat config) + Prettier
 
@@ -85,18 +95,25 @@ app/
   page.js                  halaman utama
   globals.css               import Tailwind
   icon.svg                   favicon
-  api/analyze/route.js       proxy server-side ke Gemini API
+  api/analyze/route.js       proxy server-side ke Gemini API (analisis CV)
+  api/interview-prep/route.js  proxy server-side ke Gemini API (persiapan interview)
 components/
   JobHuntCopilot.jsx          shell utama (header + tab switcher)
   Tracker.jsx                  tab pelacak lamaran
+  KanbanBoard.jsx                papan drag & drop (dnd-kit)
+  Dashboard.jsx                    grafik & statistik (recharts)
+  InterviewPrep.jsx                  generator pertanyaan latihan interview
+  CvInput.jsx                          input CV + upload PDF (dipakai bersama)
   Analyzer.jsx                  tab analisis & cover letter
   ApplicationForm.jsx            form tambah/edit lamaran
-  ApplicationList.jsx             daftar lamaran
   StatusBadge.jsx                   badge status berwarna
 lib/
   constants.js               opsi status, style, konstanta UI
-  utils.js                     helper murni (id, tanggal, warna skor)
+  utils.js                     helper murni (id, tanggal, warna skor, bucket minggu)
   storage.js                    wrapper localStorage
+  pdf.js                          ekstraksi teks PDF (client-side)
+scripts/
+  copy-pdf-worker.mjs        menyalin worker pdf.js ke /public saat npm install
 .github/workflows/ci.yml   lint + build otomatis tiap push
 ```
 

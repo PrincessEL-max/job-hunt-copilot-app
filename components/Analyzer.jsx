@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Sparkles, Loader2, Copy, Check, X, ChevronRight } from "lucide-react";
 import { FOCUS_RING } from "../lib/constants";
 import { uid, todayISO, scoreColor, scoreBar } from "../lib/utils";
-import { loadLocal, saveLocal, PROFILE_KEY } from "../lib/storage";
+import CvInput from "./CvInput";
 
 export default function Analyzer({ applications, persistApplications, onViewTracker }) {
   const [cvText, setCvText] = useState("");
-  const [cvSaved, setCvSaved] = useState(true);
   const [jobDescription, setJobDescription] = useState("");
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
@@ -17,18 +16,6 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
   const [result, setResult] = useState(null);
   const [savedToTracker, setSavedToTracker] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    // Same reasoning as JobHuntCopilot: localStorage is only available client-side.
-    const profile = loadLocal(PROFILE_KEY, { cvText: "" });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCvText(profile.cvText || "");
-  }, []);
-
-  const saveCv = useCallback((text) => {
-    saveLocal(PROFILE_KEY, { cvText: text });
-    setCvSaved(true);
-  }, []);
 
   async function runAnalysis() {
     if (!cvText.trim() || !jobDescription.trim()) return;
@@ -81,25 +68,7 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-500">CV / Resume kamu</label>
-          {cvText && (
-            <span className="text-xs text-emerald-600">{cvSaved ? "Tersimpan ✓" : ""}</span>
-          )}
-        </div>
-        <textarea
-          value={cvText}
-          onChange={(e) => {
-            setCvText(e.target.value);
-            setCvSaved(false);
-          }}
-          onBlur={() => saveCv(cvText)}
-          rows={6}
-          placeholder="Tempel isi CV / resume kamu di sini..."
-          className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
-        />
-      </div>
+      <CvInput value={cvText} onChange={setCvText} />
 
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-1">Deskripsi Pekerjaan</label>
