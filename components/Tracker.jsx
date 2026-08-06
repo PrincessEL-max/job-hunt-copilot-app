@@ -7,7 +7,7 @@ import KanbanBoard from "./KanbanBoard";
 import { STATUS_OPTIONS, STATUS_STYLES, FOCUS_RING } from "../lib/constants";
 import { uid } from "../lib/utils";
 
-export default function Tracker({ applications, persistApplications, loading }) {
+export default function Tracker({ applications, persistApplications, loading, onPrepInterview }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -91,6 +91,7 @@ export default function Tracker({ applications, persistApplications, loading }) 
           persistApplications={persistApplications}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onPrepInterview={onPrepInterview}
         />
       )}
     </div>

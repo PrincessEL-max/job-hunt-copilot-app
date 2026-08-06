@@ -1,12 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Copy, Check, X, ChevronRight } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  Copy,
+  Check,
+  X,
+  ChevronRight,
+  MessageCircleQuestion,
+} from "lucide-react";
 import { FOCUS_RING } from "../lib/constants";
 import { uid, todayISO, scoreColor, scoreBar } from "../lib/utils";
 import CvInput from "./CvInput";
 
-export default function Analyzer({ applications, persistApplications, onViewTracker }) {
+export default function Analyzer({
+  applications,
+  persistApplications,
+  onViewTracker,
+  onPrepInterview,
+}) {
   const [cvText, setCvText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [company, setCompany] = useState("");
@@ -58,6 +71,7 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
         date: todayISO(),
         link: "",
         notes: "",
+        jobDescription,
         matchScore: result.match_score,
         coverLetter: result.cover_letter,
       },
@@ -193,7 +207,7 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
             </div>
           )}
 
-          <div className="pt-2 border-t border-slate-100">
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
             {savedToTracker ? (
               <p className="flex items-center gap-1.5 text-sm text-emerald-600">
                 <Check className="w-4 h-4" /> Tersimpan ke tracker.
@@ -212,6 +226,12 @@ export default function Analyzer({ applications, persistApplications, onViewTrac
                 Simpan sebagai lamaran baru →
               </button>
             )}
+            <button
+              onClick={() => onPrepInterview({ company, role, jobDescription })}
+              className={`flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 rounded ${FOCUS_RING}`}
+            >
+              <MessageCircleQuestion className="w-4 h-4" /> Siapkan Interview
+            </button>
           </div>
         </div>
       )}

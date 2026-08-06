@@ -8,6 +8,7 @@
 Aplikasi pelacak lamaran kerja dengan asisten AI yang menganalisis kecocokan CV terhadap deskripsi pekerjaan dan membuat draft cover letter otomatis.
 
 ![Tracker screenshot](./docs/screenshot-tracker.png)
+![CV Builder screenshot](./docs/screenshot-cv-builder.png)
 ![Dashboard screenshot](./docs/screenshot-dashboard.png)
 ![Interview prep screenshot](./docs/screenshot-interview-prep.png)
 ![PDF upload screenshot](./docs/screenshot-pdf-upload.png)
@@ -15,11 +16,13 @@ Aplikasi pelacak lamaran kerja dengan asisten AI yang menganalisis kecocokan CV 
 
 ## Fitur
 
+- Generator CV — isi form (nama, kontak, tentang saya, pengalaman kerja, projek, skill), langsung dapat CV dengan desain rapi siap-print, download sebagai PDF lewat browser
 - Papan Kanban drag & drop — geser kartu lamaran antar kolom status (Melamar, Interview, Offer, Ditolak)
 - Dashboard analitik — tren lamaran per minggu, distribusi per tahap, rata-rata skor kecocokan
-- Generator persiapan interview — AI membuat pertanyaan latihan (umum, teknis, berdasarkan celah di CV) beserta tips menjawab
+- Generator persiapan interview — AI membuat pertanyaan latihan (umum, teknis, berdasarkan celah di CV) beserta tips menjawab, bisa langsung dipicu dari kartu lamaran di tracker (bawa deskripsi pekerjaan otomatis)
 - Upload CV dari file PDF — teks diekstrak otomatis, gak perlu copy-paste manual
-- Lacak lamaran kerja (perusahaan, posisi, status, tanggal, catatan)
+- Export & Import data — backup semua lamaran + CV ke file JSON, bisa dipulihkan di device/browser lain
+- Lacak lamaran kerja (perusahaan, posisi, status, tanggal, catatan, deskripsi pekerjaan)
 - Analisis kecocokan CV vs deskripsi pekerjaan (skor 0–100, kekuatan, kekurangan) — AI juga diberi tahu perusahaan/posisi yang dituju biar cover letter-nya personal
 - Draft cover letter otomatis berbasis AI
 - Data tersimpan di browser (`localStorage`) — tidak perlu database untuk mulai
@@ -104,6 +107,8 @@ components/
   Dashboard.jsx                    grafik & statistik (recharts)
   InterviewPrep.jsx                  generator pertanyaan latihan interview
   CvInput.jsx                          input CV + upload PDF (dipakai bersama)
+  DataBackup.jsx                        export/import data (JSON)
+  CvBuilder.jsx                          generator CV dari form (print-to-PDF)
   Analyzer.jsx                  tab analisis & cover letter
   ApplicationForm.jsx            form tambah/edit lamaran
   StatusBadge.jsx                   badge status berwarna
@@ -119,7 +124,7 @@ scripts/
 
 ## Catatan
 
-Data lamaran & CV disimpan di `localStorage` browser, jadi bersifat per-device dan tidak dibagikan ke siapa pun. Langkah lanjutan yang bisa ditambahkan: database (Postgres/Prisma) supaya data bisa diakses dari beberapa perangkat, autentikasi, atau unit test untuk `lib/`.
+Data lamaran & CV disimpan di `localStorage` browser, jadi bersifat per-device dan tidak dibagikan ke siapa pun. Pakai tombol **Export** secara berkala buat backup, dan **Import** untuk memulihkan data itu di device/browser lain. Langkah lanjutan yang bisa ditambahkan: database (Postgres/Prisma) supaya data otomatis sinkron di semua perangkat tanpa export/import manual, autentikasi, atau unit test untuk `lib/`.
 
 ## Lisensi
 

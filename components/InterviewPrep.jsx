@@ -7,11 +7,14 @@ import CvInput from "./CvInput";
 
 const CATEGORY_ORDER = ["Umum", "Teknis", "Berdasarkan CV"];
 
-export default function InterviewPrep() {
+// Note: the parent passes a `key` that changes whenever a new `prefill` is
+// set (see JobHuntCopilot.jsx), so this remounts fresh instead of needing an
+// effect to re-sync state from props — same pattern as ApplicationForm.
+export default function InterviewPrep({ prefill }) {
   const [cvText, setCvText] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
+  const [jobDescription, setJobDescription] = useState(prefill?.jobDescription || "");
+  const [company, setCompany] = useState(prefill?.company || "");
+  const [role, setRole] = useState(prefill?.role || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);

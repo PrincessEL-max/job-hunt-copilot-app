@@ -12,7 +12,7 @@ import {
   KeyboardSensor,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, MessageCircleQuestion } from "lucide-react";
 import { STATUS_OPTIONS, FOCUS_RING } from "../lib/constants";
 import { scoreColor } from "../lib/utils";
 
@@ -38,7 +38,7 @@ function CardContent({ app }) {
   );
 }
 
-function KanbanCard({ app, onEdit, onDelete }) {
+function KanbanCard({ app, onEdit, onDelete, onPrepInterview }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: app.id,
   });
@@ -57,7 +57,7 @@ function KanbanCard({ app, onEdit, onDelete }) {
       className="p-3 border border-slate-200 rounded-lg bg-white shadow-sm touch-none cursor-grab active:cursor-grabbing"
     >
       <CardContent app={app} />
-      <div className="flex gap-3 mt-2 pt-2 border-t border-slate-100">
+      <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-100">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -76,12 +76,26 @@ function KanbanCard({ app, onEdit, onDelete }) {
         >
           <Trash2 className="w-3 h-3" /> Hapus
         </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrepInterview({
+              company: app.company,
+              role: app.role,
+              jobDescription: app.jobDescription || "",
+            });
+          }}
+          title="Siapkan pertanyaan interview untuk lamaran ini"
+          className={`flex items-center gap-1 text-xs text-teal-700 hover:text-teal-900 rounded ml-auto ${FOCUS_RING}`}
+        >
+          <MessageCircleQuestion className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );
 }
 
-function KanbanColumn({ status, applications, onEdit, onDelete }) {
+function KanbanColumn({ status, applications, onEdit, onDelete, onPrepInterview }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -99,14 +113,26 @@ function KanbanColumn({ status, applications, onEdit, onDelete }) {
           <p className="text-xs text-slate-400 text-center py-6">Kosong</p>
         )}
         {applications.map((app) => (
-          <KanbanCard key={app.id} app={app} onEdit={onEdit} onDelete={onDelete} />
+          <KanbanCard
+            key={app.id}
+            app={app}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPrepInterview={onPrepInterview}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-export default function KanbanBoard({ applications, persistApplications, onEdit, onDelete }) {
+export default function KanbanBoard({
+  applications,
+  persistApplications,
+  onEdit,
+  onDelete,
+  onPrepInterview,
+}) {
   const [activeId, setActiveId] = useState(null);
 
   const sensors = useSensors(
@@ -149,6 +175,7 @@ export default function KanbanBoard({ applications, persistApplications, onEdit,
             applications={applications.filter((a) => a.status === status)}
             onEdit={onEdit}
             onDelete={onDelete}
+            onPrepInterview={onPrepInterview}
           />
         ))}
       </div>

@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+/* Used by the CV Builder's "Download PDF" button (window.print()).
+   Hides everything except #cv-preview when printing, so the browser's
+   native "Save as PDF" produces a clean, text-selectable one-pager. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #cv-preview,
+  #cv-preview * {
+    visibility: visible;
+  }
+  #cv-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
