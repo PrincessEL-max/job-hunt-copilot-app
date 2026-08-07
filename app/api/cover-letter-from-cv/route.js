@@ -16,6 +16,7 @@ export async function POST(request) {
     softSkills,
     targetPosition,
     targetCompany,
+    jobSource,
   } = body || {};
 
   if (!fullName || !targetPosition || !targetCompany) {
@@ -51,11 +52,12 @@ export async function POST(request) {
     .map((p) => `${p.title || ""}: ${p.bulletsText || ""}`)
     .join("; ");
 
-  const prompt = `Kamu adalah penulis surat lamaran kerja profesional. Buatkan surat lamaran kerja formal dalam Bahasa Indonesia untuk pelamar berikut.
+  const prompt = `Kamu adalah penulis surat lamaran kerja profesional. Berdasarkan data pelamar berikut, tulis TIGA bagian narasi untuk surat lamaran kerja formal Bahasa Indonesia. Struktur surat (kop, data diri, penutup resmi) akan disusun terpisah oleh sistem — kamu HANYA menulis tiga paragraf narasinya.
 
 Nama: ${String(fullName).slice(0, 200)}
 Posisi yang dilamar: ${String(targetPosition).slice(0, 200)}
 Perusahaan tujuan: ${String(targetCompany).slice(0, 200)}
+${jobSource ? `Sumber info lowongan: ${String(jobSource).slice(0, 200)}` : ""}
 Tentang pelamar: ${String(aboutMe || "").slice(0, 1000)}
 Pendidikan: ${educationText.slice(0, 500) || "-"}
 Pengalaman kerja: ${experienceText.slice(0, 1500) || "-"}
@@ -63,9 +65,12 @@ Pengalaman projek: ${projectText.slice(0, 1500) || "-"}
 Hard skill: ${String(hardSkills || "").slice(0, 300)}
 Soft skill: ${String(softSkills || "").slice(0, 300)}
 
-Tulis surat lamaran kerja lengkap dengan format standar Indonesia: tempat & tanggal (pakai "[Kota], [Tanggal]" sebagai placeholder karena kamu tidak tahu kota/tanggal aslinya), tujuan surat (Kepada Yth. HRD ${String(targetCompany).slice(0, 100)}), salam pembuka, paragraf isi yang menjelaskan kualifikasi pelamar secara meyakinkan dan spesifik berdasarkan data di atas (JANGAN mengarang pengalaman/skill yang tidak ada di data), paragraf penutup, dan nama terang di akhir. Bahasa formal tapi mengalir natural, sekitar 250-350 kata total.
-
-Balas HANYA dengan teks surat lamaran lengkap, tanpa penjelasan tambahan, tanpa markdown.`;
+Balas HANYA dengan objek JSON, struktur persis:
+{
+  "opening": "1 paragraf pembuka (2-3 kalimat) yang menyatakan maksud melamar posisi ini${jobSource ? ", menyebutkan sumber info lowongan secara natural" : ""}. JANGAN sertakan salam 'Dengan hormat' atau data diri, itu akan ditambahkan terpisah.",
+  "body": "1-2 paragraf isi yang menjelaskan kualifikasi, pengalaman, dan skill pelamar secara meyakinkan dan SPESIFIK berdasarkan data di atas. JANGAN mengarang informasi yang tidak ada di data.",
+  "closing": "1 paragraf penutup (2-3 kalimat) yang menyebutkan lampiran dokumen pendukung, menyatakan harapan untuk wawancara, dan ucapan terima kasih. JANGAN sertakan 'Hormat saya' atau nama, itu akan ditambahkan terpisah."
+}`;
 
   try {
     const geminiRes = await fetch(
@@ -79,6 +84,7 @@ Balas HANYA dengan teks surat lamaran lengkap, tanpa penjelasan tambahan, tanpa 
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
+            responseMimeType: "application/json",
             thinkingConfig: { thinkingLevel: "low" },
             maxOutputTokens: 2048,
           },
@@ -101,7 +107,25 @@ Balas HANYA dengan teks surat lamaran lengkap, tanpa penjelasan tambahan, tanpa 
       return Response.json({ error: "Tidak ada respons teks dari model." }, { status: 502 });
     }
 
-    return Response.json({ letter: raw.trim() });
+    let cleaned = raw.trim();
+    cleaned = cleaned
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "");
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (err) {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        throw err;
+      }
+    }
+
+    return Response.json(parsed);
   } catch (err) {
     console.error(err);
     return Response.json(

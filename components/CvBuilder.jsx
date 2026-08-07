@@ -12,7 +12,7 @@ import {
   FileText,
 } from "lucide-react";
 import { FOCUS_RING } from "../lib/constants";
-import { uid } from "../lib/utils";
+import { uid, formatLongDateID } from "../lib/utils";
 import { loadLocal, saveLocal, CV_BUILDER_KEY } from "../lib/storage";
 
 const EMPTY_DATA = {
@@ -28,7 +28,15 @@ const EMPTY_DATA = {
   hardSkills: "",
   softSkills: "",
   manualCvHtml: null,
-  coverLetterText: "",
+  // Surat lamaran only
+  birthPlace: "",
+  birthDate: "",
+  address: "",
+  letterCity: "",
+  jobSource: "",
+  letterOpening: "",
+  letterBody: "",
+  letterClosing: "",
   manualLetterHtml: null,
 };
 
@@ -44,12 +52,32 @@ function bulletsOf(text) {
     .filter(Boolean);
 }
 
+function AssistButton({ onClick, loading, label = "Bantu AI" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className={`flex items-center gap-1 text-xs font-medium text-teal-700 hover:underline disabled:opacity-50 rounded ${FOCUS_RING}`}
+    >
+      {loading ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <Sparkles className="w-3.5 h-3.5" />
+      )}
+      {loading ? "Memproses..." : label}
+    </button>
+  );
+}
+
 export default function CvBuilder() {
   const [data, setData] = useState(EMPTY_DATA);
   const [loaded, setLoaded] = useState(false);
   const [previewMode, setPreviewMode] = useState("cv");
   const [generatingLetter, setGeneratingLetter] = useState(false);
   const [letterError, setLetterError] = useState("");
+  const [assistingFields, setAssistingFields] = useState(() => new Set());
+  const [assistError, setAssistError] = useState("");
   const previewRef = useRef(null);
 
   useEffect(() => {
@@ -67,6 +95,16 @@ export default function CvBuilder() {
   function update(field, value) {
     setData((d) => ({ ...d, [field]: value }));
   }
+
+  function setAssisting(key, value) {
+    setAssistingFields((prev) => {
+      const next = new Set(prev);
+      if (value) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+  const isAssisting = (key) => assistingFields.has(key);
 
   // ---- Education ----
   function addEducation() {
@@ -125,6 +163,100 @@ export default function CvBuilder() {
     );
   }
 
+  // ---- AI assist ----
+  async function callAssist(fieldType, extra = {}) {
+    const context = {
+      fullName: data.fullName,
+      targetPosition: data.targetPosition,
+      targetCompany: data.targetCompany,
+      education: data.education,
+      workExperiences: data.workExperiences,
+      projects: data.projects,
+      hardSkills: data.hardSkills,
+      softSkills: data.softSkills,
+      ...extra,
+    };
+    const res = await fetch("/api/cv-assist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fieldType, context }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Gagal meminta bantuan AI.");
+    return result.text;
+  }
+
+  async function assistAbout() {
+    setAssisting("about", true);
+    setAssistError("");
+    try {
+      update("aboutMe", await callAssist("about"));
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting("about", false);
+    }
+  }
+
+  async function assistHardSkills() {
+    setAssisting("hardSkills", true);
+    setAssistError("");
+    try {
+      update("hardSkills", await callAssist("hardSkills"));
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting("hardSkills", false);
+    }
+  }
+
+  async function assistSoftSkills() {
+    setAssisting("softSkills", true);
+    setAssistError("");
+    try {
+      update("softSkills", await callAssist("softSkills"));
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting("softSkills", false);
+    }
+  }
+
+  async function assistExperienceBullets(exp) {
+    const key = `exp-${exp.id}`;
+    setAssisting(key, true);
+    setAssistError("");
+    try {
+      const text = await callAssist("experienceBullets", {
+        entryTitle: exp.title,
+        entryCompany: exp.company,
+        entryNotes: exp.bulletsText,
+      });
+      updateWorkExperience(exp.id, "bulletsText", text);
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting(key, false);
+    }
+  }
+
+  async function assistProjectBullets(p) {
+    const key = `proj-${p.id}`;
+    setAssisting(key, true);
+    setAssistError("");
+    try {
+      const text = await callAssist("projectBullets", {
+        entryTitle: p.title,
+        entryNotes: p.bulletsText,
+      });
+      updateProject(p.id, "bulletsText", text);
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting(key, false);
+    }
+  }
+
   // ---- Manual edit mode (works for whichever preview is currently active) ----
   const manualField = previewMode === "cv" ? "manualCvHtml" : "manualLetterHtml";
   const isManual = data[manualField] != null;
@@ -160,11 +292,18 @@ export default function CvBuilder() {
           softSkills: data.softSkills,
           targetPosition: data.targetPosition,
           targetCompany: data.targetCompany,
+          jobSource: data.jobSource,
         }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal membuat surat lamaran.");
-      setData((d) => ({ ...d, coverLetterText: result.letter, manualLetterHtml: null }));
+      setData((d) => ({
+        ...d,
+        letterOpening: result.opening || "",
+        letterBody: result.body || "",
+        letterClosing: result.closing || "",
+        manualLetterHtml: null,
+      }));
       setPreviewMode("letter");
     } catch (e) {
       console.error(e);
@@ -176,6 +315,22 @@ export default function CvBuilder() {
 
   const letterReady =
     data.fullName.trim() && data.targetPosition.trim() && data.targetCompany.trim();
+  const hasLetterContent = data.letterOpening || data.letterBody || data.letterClosing;
+  const primaryEducation = data.education[0];
+  const dataDiriRows = [
+    { label: "Nama", value: data.fullName },
+    (data.birthPlace || data.birthDate) && {
+      label: "Tempat, Tanggal Lahir",
+      value: [data.birthPlace, data.birthDate].filter(Boolean).join(", "),
+    },
+    primaryEducation && {
+      label: "Pendidikan Terakhir",
+      value: [primaryEducation.major, primaryEducation.institution].filter(Boolean).join(", "),
+    },
+    data.address && { label: "Alamat", value: data.address },
+    data.phone && { label: "No. Telepon", value: data.phone },
+    data.email && { label: "Email", value: data.email },
+  ].filter(Boolean);
 
   return (
     <div className="space-y-8">
@@ -231,18 +386,21 @@ export default function CvBuilder() {
             />
           </div>
           <p className="sm:col-span-2 text-xs text-teal-800">
-            Posisi tampil sebagai subjudul di CV, dan keduanya dipakai untuk generate surat lamaran
-            kerja di bawah.
+            Posisi tampil sebagai subjudul di CV. Keduanya dipakai AI untuk menyesuaikan isian
+            &quot;Bantu AI&quot; di bawah dan untuk generate surat lamaran kerja.
           </p>
         </div>
 
         <div>
-          <label className={labelClass}>Tentang Saya</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className={labelClass}>Tentang Saya</label>
+            <AssistButton onClick={assistAbout} loading={isAssisting("about")} />
+          </div>
           <textarea
             value={data.aboutMe}
             onChange={(e) => update("aboutMe", e.target.value)}
             rows={3}
-            placeholder="Ringkasan singkat tentang latar belakang dan tujuan kariermu..."
+            placeholder="Ringkasan singkat tentang latar belakang dan tujuan kariermu, atau klik Bantu AI..."
             className={inputClass}
           />
         </div>
@@ -343,13 +501,24 @@ export default function CvBuilder() {
                   placeholder="Periode (mis. Feb 2026 - Jul 2026)"
                   className={inputClass}
                 />
-                <textarea
-                  value={exp.bulletsText}
-                  onChange={(e) => updateWorkExperience(exp.id, "bulletsText", e.target.value)}
-                  placeholder={"Poin tugas/pencapaian, satu per baris..."}
-                  rows={3}
-                  className={inputClass}
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-slate-400">Poin tugas/pencapaian</span>
+                    <AssistButton
+                      onClick={() => assistExperienceBullets(exp)}
+                      loading={isAssisting(`exp-${exp.id}`)}
+                    />
+                  </div>
+                  <textarea
+                    value={exp.bulletsText}
+                    onChange={(e) => updateWorkExperience(exp.id, "bulletsText", e.target.value)}
+                    placeholder={
+                      "Satu poin per baris, atau isi posisi & perusahaan lalu klik Bantu AI..."
+                    }
+                    rows={3}
+                    className={inputClass}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeWorkExperience(exp.id)}
@@ -385,13 +554,22 @@ export default function CvBuilder() {
                   placeholder="Nama Projek"
                   className={inputClass}
                 />
-                <textarea
-                  value={p.bulletsText}
-                  onChange={(e) => updateProject(p.id, "bulletsText", e.target.value)}
-                  placeholder={"Poin deskripsi projek, satu per baris..."}
-                  rows={3}
-                  className={inputClass}
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-slate-400">Poin deskripsi</span>
+                    <AssistButton
+                      onClick={() => assistProjectBullets(p)}
+                      loading={isAssisting(`proj-${p.id}`)}
+                    />
+                  </div>
+                  <textarea
+                    value={p.bulletsText}
+                    onChange={(e) => updateProject(p.id, "bulletsText", e.target.value)}
+                    placeholder={"Satu poin per baris, atau isi nama projek lalu klik Bantu AI..."}
+                    rows={3}
+                    className={inputClass}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeProject(p.id)}
@@ -406,23 +584,89 @@ export default function CvBuilder() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Hard Skill</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelClass}>Hard Skill</label>
+              <AssistButton onClick={assistHardSkills} loading={isAssisting("hardSkills")} />
+            </div>
             <textarea
               value={data.hardSkills}
               onChange={(e) => update("hardSkills", e.target.value)}
               rows={2}
-              placeholder="Pisahkan dengan koma, mis. Python, C++, AutoCad"
+              placeholder="Pisahkan dengan koma, atau klik Bantu AI..."
               className={inputClass}
             />
           </div>
           <div>
-            <label className={labelClass}>Soft Skill</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelClass}>Soft Skill</label>
+              <AssistButton onClick={assistSoftSkills} loading={isAssisting("softSkills")} />
+            </div>
             <textarea
               value={data.softSkills}
               onChange={(e) => update("softSkills", e.target.value)}
               rows={2}
-              placeholder="Pisahkan dengan koma, mis. Kerja tim, Problem solving"
+              placeholder="Pisahkan dengan koma, atau klik Bantu AI..."
               className={inputClass}
+            />
+          </div>
+        </div>
+
+        {assistError && <p className="text-sm text-rose-600">{assistError}</p>}
+      </div>
+
+      {/* ---------- DATA TAMBAHAN UNTUK SURAT LAMARAN (form terpisah) ---------- */}
+      <div className="p-4 border border-slate-200 rounded-lg bg-slate-50">
+        <p className="text-sm font-semibold text-slate-700 mb-1">
+          Data Tambahan untuk Surat Lamaran
+        </p>
+        <p className="text-xs text-slate-500 mb-3">
+          Data ini cuma dipakai di surat lamaran, gak muncul di CV. Semua opsional — makin lengkap,
+          makin rapi hasilnya.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Tempat Lahir</label>
+            <input
+              value={data.birthPlace}
+              onChange={(e) => update("birthPlace", e.target.value)}
+              className={inputClass}
+              placeholder="mis. Jakarta"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Tanggal Lahir</label>
+            <input
+              value={data.birthDate}
+              onChange={(e) => update("birthDate", e.target.value)}
+              className={inputClass}
+              placeholder="mis. 17 Agustus 2003"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Alamat</label>
+            <input
+              value={data.address}
+              onChange={(e) => update("address", e.target.value)}
+              className={inputClass}
+              placeholder="Alamat domisili"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Kota Penulisan Surat</label>
+            <input
+              value={data.letterCity}
+              onChange={(e) => update("letterCity", e.target.value)}
+              className={inputClass}
+              placeholder="mis. Jakarta"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Sumber Info Lowongan (opsional)</label>
+            <input
+              value={data.jobSource}
+              onChange={(e) => update("jobSource", e.target.value)}
+              className={inputClass}
+              placeholder="mis. LinkedIn, Instagram, referensi teman"
             />
           </div>
         </div>
@@ -496,7 +740,7 @@ export default function CvBuilder() {
               )}
               {generatingLetter
                 ? "Membuat..."
-                : data.coverLetterText
+                : hasLetterContent
                   ? "Generate Ulang"
                   : "Generate Surat Lamaran"}
             </button>
@@ -645,17 +889,56 @@ export default function CvBuilder() {
             <div
               id="cv-preview"
               ref={previewRef}
-              className="bg-white border border-slate-200 shadow-sm mx-auto p-10 text-black"
+              className="bg-white border border-slate-200 shadow-sm mx-auto p-10 text-black text-sm leading-relaxed"
               style={{ ...previewFont, maxWidth: "780px" }}
             >
-              {data.coverLetterText ? (
-                <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {data.coverLetterText}
+              {hasLetterContent ? (
+                <div className="space-y-4">
+                  <p className="text-right">
+                    {data.letterCity || "[Kota]"}, {formatLongDateID()}
+                  </p>
+
+                  <div>
+                    <p>Perihal: Lamaran Pekerjaan sebagai {data.targetPosition}</p>
+                    <p>Lampiran: 1 (satu) berkas</p>
+                  </div>
+
+                  <div>
+                    <p>Kepada Yth.</p>
+                    <p>Bapak/Ibu HRD {data.targetCompany}</p>
+                    <p>di Tempat</p>
+                  </div>
+
+                  <p>Dengan hormat,</p>
+
+                  <p>{data.letterOpening}</p>
+
+                  <div>
+                    <p className="mb-1">Berikut data diri saya:</p>
+                    <div className="grid grid-cols-[160px_10px_1fr] gap-y-0.5">
+                      {dataDiriRows.map((row) => (
+                        <div className="contents" key={row.label}>
+                          <span>{row.label}</span>
+                          <span>:</span>
+                          <span>{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p>{data.letterBody}</p>
+
+                  <p>{data.letterClosing}</p>
+
+                  <div className="pt-6">
+                    <p>Hormat saya,</p>
+                    <p className="pt-12">{data.fullName}</p>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-16 text-slate-400">
                   <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm">
+                  <p>
                     Belum ada surat lamaran. Isi data di atas lalu klik &quot;Generate Surat
                     Lamaran&quot;.
                   </p>
