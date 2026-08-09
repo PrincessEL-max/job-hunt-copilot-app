@@ -10,23 +10,34 @@ import {
   Sparkles,
   Loader2,
   FileText,
+  Camera,
+  X,
 } from "lucide-react";
 import { FOCUS_RING } from "../lib/constants";
 import { uid, formatLongDateID } from "../lib/utils";
 import { loadLocal, saveLocal, CV_BUILDER_KEY } from "../lib/storage";
+import { resizeImage } from "../lib/image";
 
 const EMPTY_DATA = {
   fullName: "",
   phone: "",
   email: "",
+  showPhoto: false,
+  photoDataUrl: null,
   targetPosition: "",
   targetCompany: "",
   aboutMe: "",
   education: [],
   workExperiences: [],
+  organizations: [],
   projects: [],
+  certifications: [],
   hardSkills: "",
   softSkills: "",
+  languages: "",
+  linkedinUrl: "",
+  githubUrl: "",
+  portfolioUrl: "",
   manualCvHtml: null,
   // Surat lamaran only
   birthPlace: "",
@@ -78,7 +89,10 @@ export default function CvBuilder() {
   const [letterError, setLetterError] = useState("");
   const [assistingFields, setAssistingFields] = useState(() => new Set());
   const [assistError, setAssistError] = useState("");
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const previewRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   useEffect(() => {
     const saved = loadLocal(CV_BUILDER_KEY, EMPTY_DATA);
@@ -105,6 +119,31 @@ export default function CvBuilder() {
     });
   }
   const isAssisting = (key) => assistingFields.has(key);
+
+  // ---- Photo ----
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("File harus berupa gambar.");
+      return;
+    }
+    setPhotoProcessing(true);
+    setPhotoError("");
+    try {
+      const dataUrl = await resizeImage(file);
+      update("photoDataUrl", dataUrl);
+    } catch (err) {
+      console.error(err);
+      setPhotoError("Gagal memproses foto. Coba file lain.");
+    } finally {
+      setPhotoProcessing(false);
+    }
+  }
+  function removePhoto() {
+    update("photoDataUrl", null);
+  }
 
   // ---- Education ----
   function addEducation() {
@@ -163,6 +202,46 @@ export default function CvBuilder() {
     );
   }
 
+  // ---- Organizations ----
+  function addOrganization() {
+    update("organizations", [
+      ...data.organizations,
+      { id: uid(), title: "", company: "", dateRange: "", bulletsText: "" },
+    ]);
+  }
+  function updateOrganization(id, field, value) {
+    update(
+      "organizations",
+      data.organizations.map((o) => (o.id === id ? { ...o, [field]: value } : o))
+    );
+  }
+  function removeOrganization(id) {
+    update(
+      "organizations",
+      data.organizations.filter((o) => o.id !== id)
+    );
+  }
+
+  // ---- Certifications ----
+  function addCertification() {
+    update("certifications", [
+      ...data.certifications,
+      { id: uid(), name: "", issuer: "", date: "" },
+    ]);
+  }
+  function updateCertification(id, field, value) {
+    update(
+      "certifications",
+      data.certifications.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+    );
+  }
+  function removeCertification(id) {
+    update(
+      "certifications",
+      data.certifications.filter((c) => c.id !== id)
+    );
+  }
+
   // ---- AI assist ----
   async function callAssist(fieldType, extra = {}) {
     const context = {
@@ -171,7 +250,9 @@ export default function CvBuilder() {
       targetCompany: data.targetCompany,
       education: data.education,
       workExperiences: data.workExperiences,
+      organizations: data.organizations,
       projects: data.projects,
+      certifications: data.certifications,
       hardSkills: data.hardSkills,
       softSkills: data.softSkills,
       ...extra,
@@ -257,6 +338,24 @@ export default function CvBuilder() {
     }
   }
 
+  async function assistOrganizationBullets(org) {
+    const key = `org-${org.id}`;
+    setAssisting(key, true);
+    setAssistError("");
+    try {
+      const text = await callAssist("organizationBullets", {
+        entryTitle: org.title,
+        entryCompany: org.company,
+        entryNotes: org.bulletsText,
+      });
+      updateOrganization(org.id, "bulletsText", text);
+    } catch (e) {
+      setAssistError(e.message);
+    } finally {
+      setAssisting(key, false);
+    }
+  }
+
   // ---- Manual edit mode (works for whichever preview is currently active) ----
   const manualField = previewMode === "cv" ? "manualCvHtml" : "manualLetterHtml";
   const isManual = data[manualField] != null;
@@ -287,7 +386,9 @@ export default function CvBuilder() {
           aboutMe: data.aboutMe,
           education: data.education,
           workExperiences: data.workExperiences,
+          organizations: data.organizations,
           projects: data.projects,
+          certifications: data.certifications,
           hardSkills: data.hardSkills,
           softSkills: data.softSkills,
           targetPosition: data.targetPosition,
@@ -362,6 +463,100 @@ export default function CvBuilder() {
               onChange={(e) => update("email", e.target.value)}
               className={inputClass}
               placeholder="nama@email.com"
+            />
+          </div>
+        </div>
+
+        <div className="p-3 border border-slate-200 rounded-lg bg-white">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={data.showPhoto}
+              onChange={(e) => update("showPhoto", e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+            />
+            Tampilkan Foto di CV
+          </label>
+          {data.showPhoto && (
+            <div className="flex items-center gap-3 mt-3">
+              {data.photoDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- base64 data URL from client-side resize, not a server asset to optimize
+                <img
+                  src={data.photoDataUrl}
+                  alt="Foto profil"
+                  className="w-16 h-16 rounded-md object-cover border border-slate-200"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-slate-300" />
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={photoProcessing}
+                  className={`flex items-center gap-1.5 text-xs font-medium text-teal-700 hover:underline disabled:opacity-50 rounded ${FOCUS_RING}`}
+                >
+                  {photoProcessing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                  {photoProcessing
+                    ? "Memproses..."
+                    : data.photoDataUrl
+                      ? "Ganti Foto"
+                      : "Upload Foto"}
+                </button>
+                {data.photoDataUrl && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className={`flex items-center gap-1.5 text-xs font-medium text-rose-600 hover:underline rounded ${FOCUS_RING}`}
+                  >
+                    <X className="w-3.5 h-3.5" /> Hapus Foto
+                  </button>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          )}
+          {photoError && <p className="text-xs text-rose-600 mt-2">{photoError}</p>}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className={labelClass}>LinkedIn (opsional)</label>
+            <input
+              value={data.linkedinUrl}
+              onChange={(e) => update("linkedinUrl", e.target.value)}
+              className={inputClass}
+              placeholder="linkedin.com/in/..."
+            />
+          </div>
+          <div>
+            <label className={labelClass}>GitHub (opsional)</label>
+            <input
+              value={data.githubUrl}
+              onChange={(e) => update("githubUrl", e.target.value)}
+              className={inputClass}
+              placeholder="github.com/..."
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Portofolio (opsional)</label>
+            <input
+              value={data.portfolioUrl}
+              onChange={(e) => update("portfolioUrl", e.target.value)}
+              className={inputClass}
+              placeholder="namamu.com"
             />
           </div>
         </div>
@@ -531,6 +726,74 @@ export default function CvBuilder() {
           </div>
         </div>
 
+        {/* Organizations */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-slate-500">Organisasi (opsional)</label>
+            <button
+              type="button"
+              onClick={addOrganization}
+              className={`flex items-center gap-1 text-xs font-medium text-teal-700 hover:underline rounded ${FOCUS_RING}`}
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah
+            </button>
+          </div>
+          <div className="space-y-3">
+            {data.organizations.map((org) => (
+              <div
+                key={org.id}
+                className="p-3 border border-slate-200 rounded-lg bg-white space-y-2"
+              >
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={org.title}
+                    onChange={(e) => updateOrganization(org.id, "title", e.target.value)}
+                    placeholder="Peran / Jabatan"
+                    className={inputClass}
+                  />
+                  <input
+                    value={org.company}
+                    onChange={(e) => updateOrganization(org.id, "company", e.target.value)}
+                    placeholder="Nama Organisasi"
+                    className={inputClass}
+                  />
+                </div>
+                <input
+                  value={org.dateRange}
+                  onChange={(e) => updateOrganization(org.id, "dateRange", e.target.value)}
+                  placeholder="Periode (mis. 2024 - 2025)"
+                  className={inputClass}
+                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-slate-400">Poin peran/kontribusi</span>
+                    <AssistButton
+                      onClick={() => assistOrganizationBullets(org)}
+                      loading={isAssisting(`org-${org.id}`)}
+                    />
+                  </div>
+                  <textarea
+                    value={org.bulletsText}
+                    onChange={(e) => updateOrganization(org.id, "bulletsText", e.target.value)}
+                    placeholder={
+                      "Satu poin per baris, atau isi peran & organisasi lalu klik Bantu AI..."
+                    }
+                    rows={3}
+                    className={inputClass}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeOrganization(org.id)}
+                  className={`flex items-center gap-1 text-xs text-rose-600 hover:underline rounded ${FOCUS_RING}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Hapus
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Projects */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -582,6 +845,56 @@ export default function CvBuilder() {
           </div>
         </div>
 
+        {/* Certifications */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-slate-500">Sertifikasi (opsional)</label>
+            <button
+              type="button"
+              onClick={addCertification}
+              className={`flex items-center gap-1 text-xs font-medium text-teal-700 hover:underline rounded ${FOCUS_RING}`}
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah
+            </button>
+          </div>
+          <div className="space-y-3">
+            {data.certifications.map((cert) => (
+              <div
+                key={cert.id}
+                className="p-3 border border-slate-200 rounded-lg bg-white space-y-2"
+              >
+                <input
+                  value={cert.name}
+                  onChange={(e) => updateCertification(cert.id, "name", e.target.value)}
+                  placeholder="Nama Sertifikasi"
+                  className={inputClass}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={cert.issuer}
+                    onChange={(e) => updateCertification(cert.id, "issuer", e.target.value)}
+                    placeholder="Penerbit"
+                    className={inputClass}
+                  />
+                  <input
+                    value={cert.date}
+                    onChange={(e) => updateCertification(cert.id, "date", e.target.value)}
+                    placeholder="Tanggal (mis. 2025)"
+                    className={inputClass}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeCertification(cert.id)}
+                  className={`flex items-center gap-1 text-xs text-rose-600 hover:underline rounded ${FOCUS_RING}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Hapus
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -609,6 +922,16 @@ export default function CvBuilder() {
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Bahasa (opsional)</label>
+          <input
+            value={data.languages}
+            onChange={(e) => update("languages", e.target.value)}
+            className={inputClass}
+            placeholder="mis. Indonesia (Native), Inggris (Aktif)"
+          />
         </div>
 
         {assistError && <p className="text-sm text-rose-600">{assistError}</p>}
@@ -772,18 +1095,28 @@ export default function CvBuilder() {
               className="bg-white border border-slate-200 shadow-sm mx-auto p-10 text-black"
               style={{ ...previewFont, maxWidth: "780px" }}
             >
-              <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-3 gap-4">
-                <div>
+              <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-3 gap-4">
+                <div className="min-w-0">
                   <h1 className="text-3xl leading-tight break-words">
                     {data.fullName || "Nama Lengkap"}
                   </h1>
                   {data.targetPosition && (
                     <p className="text-sm italic mt-0.5">{data.targetPosition}</p>
                   )}
+                  <p className="text-xs mt-1.5">
+                    {[data.phone, data.email, data.linkedinUrl, data.githubUrl, data.portfolioUrl]
+                      .filter(Boolean)
+                      .join(" | ")}
+                  </p>
                 </div>
-                <p className="text-xs whitespace-nowrap pb-1">
-                  {[data.phone, data.email].filter(Boolean).join(" | ")}
-                </p>
+                {data.showPhoto && data.photoDataUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- base64 data URL, must render as-is inside #cv-preview for print/PDF export
+                  <img
+                    src={data.photoDataUrl}
+                    alt="Foto profil"
+                    className="w-24 h-24 rounded-md object-cover border border-slate-300 shrink-0"
+                  />
+                )}
               </div>
 
               {data.aboutMe && <p className="text-sm leading-relaxed mb-4">{data.aboutMe}</p>}
@@ -833,6 +1166,33 @@ export default function CvBuilder() {
                 </section>
               )}
 
+              {data.organizations.length > 0 && (
+                <section className="mb-4">
+                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
+                    Organisasi
+                  </h2>
+                  {data.organizations.map((org) => (
+                    <div key={org.id} className="mb-3 last:mb-0">
+                      {(org.title || org.company) && (
+                        <>
+                          <p className="font-bold text-sm uppercase">{org.title}</p>
+                          <p className="text-xs italic mb-1">
+                            {[org.company, org.dateRange].filter(Boolean).join(" | ")}
+                          </p>
+                        </>
+                      )}
+                      {bulletsOf(org.bulletsText).length > 0 && (
+                        <ul className="list-disc list-outside ml-4 text-sm space-y-0.5">
+                          {bulletsOf(org.bulletsText).map((b, i) => (
+                            <li key={i}>{b}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </section>
+              )}
+
               {data.projects.length > 0 && (
                 <section className="mb-4">
                   <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
@@ -853,6 +1213,25 @@ export default function CvBuilder() {
                 </section>
               )}
 
+              {data.certifications.length > 0 && (
+                <section className="mb-4">
+                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
+                    Sertifikasi
+                  </h2>
+                  {data.certifications.map((cert) => (
+                    <div key={cert.id} className="mb-1 last:mb-0 text-sm">
+                      <span className="font-bold">{cert.name}</span>
+                      {(cert.issuer || cert.date) && (
+                        <span>
+                          {" — "}
+                          {[cert.issuer, cert.date].filter(Boolean).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </section>
+              )}
+
               {data.hardSkills && (
                 <section className="mb-4">
                   <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
@@ -863,11 +1242,20 @@ export default function CvBuilder() {
               )}
 
               {data.softSkills && (
-                <section>
+                <section className={data.languages ? "mb-4" : ""}>
                   <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
                     Soft Skill
                   </h2>
                   <p className="text-sm">{data.softSkills}</p>
+                </section>
+              )}
+
+              {data.languages && (
+                <section>
+                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
+                    Bahasa
+                  </h2>
+                  <p className="text-sm">{data.languages}</p>
                 </section>
               )}
             </div>

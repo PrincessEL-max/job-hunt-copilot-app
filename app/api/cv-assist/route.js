@@ -11,13 +11,23 @@ function buildContextBlock(ctx) {
     .map((p) => p.title || "")
     .filter(Boolean)
     .join("; ");
+  const organizationSummary = (ctx.organizations || [])
+    .map((o) => `${o.title || ""} di ${o.company || ""}`)
+    .filter(Boolean)
+    .join("; ");
+  const certificationSummary = (ctx.certifications || [])
+    .map((c) => c.name || "")
+    .filter(Boolean)
+    .join("; ");
 
   return `Nama: ${ctx.fullName || "-"}
 Posisi yang dilamar: ${ctx.targetPosition || "-"}
 Perusahaan tujuan: ${ctx.targetCompany || "-"}
 Pendidikan: ${educationSummary || "-"}
 Pengalaman kerja: ${experienceSummary || "-"}
+Organisasi: ${organizationSummary || "-"}
 Projek: ${projectSummary || "-"}
+Sertifikasi: ${certificationSummary || "-"}
 Hard skill saat ini: ${ctx.hardSkills || "-"}
 Soft skill saat ini: ${ctx.softSkills || "-"}`;
 }
@@ -66,6 +76,15 @@ Nama projek: ${ctx.entryTitle || "-"}
 Catatan kasar dari pengguna (boleh kosong/tidak jelas, abaikan kalau tidak berguna): ${ctx.entryNotes || "-"}
 
 ${targetLine} Tulis 2-4 poin deskripsi yang realistis dan spesifik untuk projek "${ctx.entryTitle || "tersebut"}" (gunakan kata kerja aktif). Kalau catatan pengguna berisi info berguna, prioritaskan itu; kalau tidak, buat berdasarkan asumsi wajar dari nama projeknya. Balas HANYA dengan poin-poin, satu per baris, tanpa bullet/tanda apapun di depan, tanpa penjelasan tambahan.`;
+
+    case "organizationBullets":
+      return `Kamu bantu menulis poin peran/kontribusi untuk bagian organisasi di CV.
+
+Peran: ${ctx.entryTitle || "-"}
+Organisasi: ${ctx.entryCompany || "-"}
+Catatan kasar dari pengguna (boleh kosong/tidak jelas, abaikan kalau tidak berguna): ${ctx.entryNotes || "-"}
+
+${targetLine} Tulis 2-4 poin peran/kontribusi yang realistis dan spesifik untuk peran "${ctx.entryTitle || "tersebut"}" di organisasi ini (gunakan kata kerja aktif). Kalau catatan pengguna berisi info berguna, prioritaskan itu; kalau tidak, buat berdasarkan tanggung jawab umum peran tersebut. Balas HANYA dengan poin-poin, satu per baris, tanpa bullet/tanda apapun di depan, tanpa penjelasan tambahan.`;
 
     default:
       return null;

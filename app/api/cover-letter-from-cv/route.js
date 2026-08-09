@@ -12,6 +12,8 @@ export async function POST(request) {
     education,
     workExperiences,
     projects,
+    organizations,
+    certifications,
     hardSkills,
     softSkills,
     targetPosition,
@@ -51,6 +53,14 @@ export async function POST(request) {
   const projectText = (projects || [])
     .map((p) => `${p.title || ""}: ${p.bulletsText || ""}`)
     .join("; ");
+  const organizationText = (organizations || [])
+    .map(
+      (o) => `${o.title || ""} di ${o.company || ""} (${o.dateRange || ""}): ${o.bulletsText || ""}`
+    )
+    .join("; ");
+  const certificationText = (certifications || [])
+    .map((c) => `${c.name || ""}${c.issuer ? ` - ${c.issuer}` : ""}`)
+    .join("; ");
 
   const prompt = `Kamu adalah penulis surat lamaran kerja profesional. Berdasarkan data pelamar berikut, tulis TIGA bagian narasi untuk surat lamaran kerja formal Bahasa Indonesia. Struktur surat (kop, data diri, penutup resmi) akan disusun terpisah oleh sistem — kamu HANYA menulis tiga paragraf narasinya.
 
@@ -61,7 +71,9 @@ ${jobSource ? `Sumber info lowongan: ${String(jobSource).slice(0, 200)}` : ""}
 Tentang pelamar: ${String(aboutMe || "").slice(0, 1000)}
 Pendidikan: ${educationText.slice(0, 500) || "-"}
 Pengalaman kerja: ${experienceText.slice(0, 1500) || "-"}
+Organisasi: ${organizationText.slice(0, 1000) || "-"}
 Pengalaman projek: ${projectText.slice(0, 1500) || "-"}
+Sertifikasi: ${certificationText.slice(0, 500) || "-"}
 Hard skill: ${String(hardSkills || "").slice(0, 300)}
 Soft skill: ${String(softSkills || "").slice(0, 300)}
 
