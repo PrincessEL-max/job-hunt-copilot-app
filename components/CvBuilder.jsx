@@ -17,6 +17,15 @@ import { FOCUS_RING } from "../lib/constants";
 import { uid, formatLongDateID } from "../lib/utils";
 import { loadLocal, saveLocal, CV_BUILDER_KEY } from "../lib/storage";
 import { resizeImage } from "../lib/image";
+import ClassicTemplate from "./cv-templates/ClassicTemplate";
+import ModernTemplate from "./cv-templates/ModernTemplate";
+import TwoColumnTemplate from "./cv-templates/TwoColumnTemplate";
+
+const CV_TEMPLATES = {
+  classic: { label: "Klasik", component: ClassicTemplate },
+  modern: { label: "Modern", component: ModernTemplate },
+  twocolumn: { label: "Dua Kolom", component: TwoColumnTemplate },
+};
 
 const EMPTY_DATA = {
   fullName: "",
@@ -26,6 +35,7 @@ const EMPTY_DATA = {
   photoDataUrl: null,
   targetPosition: "",
   targetCompany: "",
+  template: "classic",
   aboutMe: "",
   education: [],
   workExperiences: [],
@@ -55,13 +65,6 @@ const inputClass =
   "w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600";
 const labelClass = "block text-xs font-medium text-slate-500 mb-1";
 const previewFont = { fontFamily: "Georgia, 'Times New Roman', Times, serif" };
-
-function bulletsOf(text) {
-  return (text || "")
-    .split("\n")
-    .map((b) => b.trim())
-    .filter(Boolean);
-}
 
 function AssistButton({ onClick, loading, label = "Bantu AI" }) {
   return (
@@ -417,6 +420,7 @@ export default function CvBuilder() {
   const letterReady =
     data.fullName.trim() && data.targetPosition.trim() && data.targetCompany.trim();
   const hasLetterContent = data.letterOpening || data.letterBody || data.letterClosing;
+  const SelectedCvTemplate = (CV_TEMPLATES[data.template] || CV_TEMPLATES.classic).component;
   const primaryEducation = data.education[0];
   const dataDiriRows = [
     { label: "Nama", value: data.fullName },
@@ -1017,6 +1021,25 @@ export default function CvBuilder() {
             </button>
           </div>
 
+          {previewMode === "cv" && !isManual && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className="text-xs text-slate-400 mr-1">Desain:</span>
+              {Object.entries(CV_TEMPLATES).map(([key, tpl]) => (
+                <button
+                  key={key}
+                  onClick={() => update("template", key)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-full border ${FOCUS_RING} ${
+                    data.template === key
+                      ? "bg-teal-700 border-teal-700 text-white"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center gap-2 flex-wrap">
             {isManual ? (
               <button
@@ -1084,180 +1107,18 @@ export default function CvBuilder() {
               contentEditable
               suppressContentEditableWarning
               onBlur={captureManualEdit}
-              className="bg-white border border-slate-200 shadow-sm mx-auto p-10 text-black outline-none"
-              style={{ ...previewFont, maxWidth: "780px" }}
+              className="bg-white border border-slate-200 shadow-sm mx-auto outline-none overflow-hidden"
+              style={{ maxWidth: "780px" }}
               dangerouslySetInnerHTML={{ __html: data.manualCvHtml }}
             />
           ) : (
             <div
               id="cv-preview"
               ref={previewRef}
-              className="bg-white border border-slate-200 shadow-sm mx-auto p-10 text-black"
-              style={{ ...previewFont, maxWidth: "780px" }}
+              className="bg-white border border-slate-200 shadow-sm mx-auto overflow-hidden"
+              style={{ maxWidth: "780px" }}
             >
-              <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-3 gap-4">
-                <div className="min-w-0">
-                  <h1 className="text-3xl leading-tight break-words">
-                    {data.fullName || "Nama Lengkap"}
-                  </h1>
-                  {data.targetPosition && (
-                    <p className="text-sm italic mt-0.5">{data.targetPosition}</p>
-                  )}
-                  <p className="text-xs mt-1.5">
-                    {[data.phone, data.email, data.linkedinUrl, data.githubUrl, data.portfolioUrl]
-                      .filter(Boolean)
-                      .join(" | ")}
-                  </p>
-                </div>
-                {data.showPhoto && data.photoDataUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- base64 data URL, must render as-is inside #cv-preview for print/PDF export
-                  <img
-                    src={data.photoDataUrl}
-                    alt="Foto profil"
-                    className="w-24 h-24 rounded-md object-cover border border-slate-300 shrink-0"
-                  />
-                )}
-              </div>
-
-              {data.aboutMe && <p className="text-sm leading-relaxed mb-4">{data.aboutMe}</p>}
-
-              {data.education.length > 0 && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Pendidikan
-                  </h2>
-                  {data.education.map((edu) => (
-                    <div key={edu.id} className="mb-2 last:mb-0">
-                      <p className="font-bold text-sm uppercase">
-                        {edu.institution}
-                        {edu.dateRange && ` (${edu.dateRange})`}
-                        {edu.major && ` - ${edu.major}`}
-                      </p>
-                      {edu.gpa && <p className="text-xs">IPK: {edu.gpa}</p>}
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {data.workExperiences.length > 0 && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Pengalaman
-                  </h2>
-                  {data.workExperiences.map((exp) => (
-                    <div key={exp.id} className="mb-3 last:mb-0">
-                      {(exp.title || exp.company) && (
-                        <>
-                          <p className="font-bold text-sm uppercase">{exp.title}</p>
-                          <p className="text-xs italic mb-1">
-                            {[exp.company, exp.dateRange].filter(Boolean).join(" | ")}
-                          </p>
-                        </>
-                      )}
-                      {bulletsOf(exp.bulletsText).length > 0 && (
-                        <ul className="list-disc list-outside ml-4 text-sm space-y-0.5">
-                          {bulletsOf(exp.bulletsText).map((b, i) => (
-                            <li key={i}>{b}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {data.organizations.length > 0 && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Organisasi
-                  </h2>
-                  {data.organizations.map((org) => (
-                    <div key={org.id} className="mb-3 last:mb-0">
-                      {(org.title || org.company) && (
-                        <>
-                          <p className="font-bold text-sm uppercase">{org.title}</p>
-                          <p className="text-xs italic mb-1">
-                            {[org.company, org.dateRange].filter(Boolean).join(" | ")}
-                          </p>
-                        </>
-                      )}
-                      {bulletsOf(org.bulletsText).length > 0 && (
-                        <ul className="list-disc list-outside ml-4 text-sm space-y-0.5">
-                          {bulletsOf(org.bulletsText).map((b, i) => (
-                            <li key={i}>{b}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {data.projects.length > 0 && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Projek
-                  </h2>
-                  {data.projects.map((p) => (
-                    <div key={p.id} className="mb-3 last:mb-0">
-                      {p.title && <p className="font-bold text-sm uppercase mb-1">{p.title}</p>}
-                      {bulletsOf(p.bulletsText).length > 0 && (
-                        <ul className="list-disc list-outside ml-4 text-sm space-y-0.5">
-                          {bulletsOf(p.bulletsText).map((b, i) => (
-                            <li key={i}>{b}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {data.certifications.length > 0 && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Sertifikasi
-                  </h2>
-                  {data.certifications.map((cert) => (
-                    <div key={cert.id} className="mb-1 last:mb-0 text-sm">
-                      <span className="font-bold">{cert.name}</span>
-                      {(cert.issuer || cert.date) && (
-                        <span>
-                          {" — "}
-                          {[cert.issuer, cert.date].filter(Boolean).join(", ")}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {data.hardSkills && (
-                <section className="mb-4">
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Hard Skill
-                  </h2>
-                  <p className="text-sm">{data.hardSkills}</p>
-                </section>
-              )}
-
-              {data.softSkills && (
-                <section className={data.languages ? "mb-4" : ""}>
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Soft Skill
-                  </h2>
-                  <p className="text-sm">{data.softSkills}</p>
-                </section>
-              )}
-
-              {data.languages && (
-                <section>
-                  <h2 className="text-sm font-bold uppercase border-b border-black pb-1 mb-2">
-                    Bahasa
-                  </h2>
-                  <p className="text-sm">{data.languages}</p>
-                </section>
-              )}
+              <SelectedCvTemplate data={data} />
             </div>
           ))}
 
